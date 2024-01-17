@@ -1,0 +1,18 @@
+dataset:
+  train_percentage: 0.8
+  augmentation: True
+  width: 512
+  height: 512
+
+train:
+  epochs: 10
+  batch_size: 2
+  lr: 5e-3
+  weight_decay: 5e-4
+  log_freq: 10
+  save_freq: 100
+
+model:
+  type: 'torchvision'
+  name: 'FRCNN'
+  freeze: True

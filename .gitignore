@@ -163,3 +163,12 @@ cython_debug/
 # Model checkpoints
 *.ckpt
 *.pt
+
+# Vscode
+.vscode/
+
+# Data folder
+data/
+
+# Output folder
+checkpoints/
