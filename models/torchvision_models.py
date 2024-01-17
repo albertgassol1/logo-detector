@@ -1,6 +1,5 @@
 from abc import abstractmethod
 import torch.nn as nn
-import torch
 from torchvision.models import detection
 
 from typing import Dict
@@ -25,7 +24,7 @@ class BaseVisionModel(nn.Module):
         return super().__new__(cls.method2class[config['name']])
 
     @abstractmethod
-    def forward(self, x):
+    def forward(self, image, target = None):
         pass
 
 
@@ -34,11 +33,19 @@ class FRCNN(BaseVisionModel):
         super().__init__(config)
         weights = detection.FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
         self.model = detection.fasterrcnn_resnet50_fpn_v2(weights=weights, box_score_thresh=0.9)
-        num_classes = 2  # 1 class (person) + background
-        # get number of input features for the classifier
-        in_features = self.model.roi_heads.box_predictor.cls_score.in_features
-        # replace the pre-trained head with a new one
-        self.model.roi_heads.box_predictor = detection.faster_rcnn.FastRCNNPredictor(in_features, num_classes)
+
+        # Freeze backbone
+        if config['freeze']:
+            for param in self.model.parameters():
+                param.requires_grad = False
+
+        # Replace the pre-trained head with a new one
+        self.model.roi_heads.box_predictor = detection.faster_rcnn.FastRCNNPredictor(self.model.roi_heads.box_predictor.cls_score.in_features, 
+                                                                                     config['num_classes'])
+        
+    def forward(self, image, target = None):
+        # Returns losses if training and prediction if inferencing
+        return self.model(image, target)
 
 
 class SSD(BaseVisionModel):
@@ -46,12 +53,11 @@ class SSD(BaseVisionModel):
         super().__init__(config)
         weights = detection.SSD300_VGG16_Weights.DEFAULT
         self.model = detection.ssd300_vgg16(weights=weights)
-
-
         
-        
-        
+        # Freeze backbone
+        if config['freeze']:
+            for param in self.model.backbone.parameters():
+                param.requires_grad = False
 
-
-    def forward(self, x):
-        return self.model(x)
+    def forward(self, image, target = None):
+        return self.model(image, target)
