@@ -23,9 +23,9 @@ class BaseVisionModel(nn.Module):
         cls.methods[name] = cls.method
         cls.method2class[name] = cls
 
-    def __new__(cls, config, *_, **__):
+    def __new__(cls, config: ModelConfig, *_, **__):
         '''Instanciate the object from the child class'''
-        return super().__new__(cls.method2class[config['name']])
+        return super().__new__(cls.method2class[config.name])
 
     @abstractmethod
     def forward(self, image, target = None):

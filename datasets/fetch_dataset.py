@@ -5,10 +5,11 @@ import tarfile
 from io import BytesIO
 
 DATASET_URL = "http://image.ntua.gr/iva/datasets/flickr_logos/flickr_logos_27_dataset.tar.gz"
+DATASET_NAME = DATASET_URL.split("/")[-1].split(".")[0] 
+
 
 def fetch_dataset(dataset_path: Path) -> None:
     dataset_path.mkdir(exist_ok=True, parents=True)
-    filename = DATASET_URL.split("/")[-1].split(".")[0] 
 
     # Download dataset
     print("Downloading dataset...")
@@ -17,13 +18,13 @@ def fetch_dataset(dataset_path: Path) -> None:
     tar_ref.extractall(dataset_path)
     tar_ref.close()
 
-    images_zip = dataset_path / filename / "flickr_logos_27_dataset_images.tar.gz"
+    images_zip = dataset_path / DATASET_NAME / "flickr_logos_27_dataset_images.tar.gz"
     # Extract images
     print("Extracting images...")
     tar_ref = tarfile.open(images_zip)
-    tar_ref.extractall(dataset_path / filename)
+    tar_ref.extractall(dataset_path / DATASET_NAME)
     tar_ref.close()
     images_zip.unlink()
 
-    return dataset_path / filename / "flickr_logos_27_dataset_images", \
-           dataset_path / filename / "flickr_logos_27_dataset_training_set_annotation.txt"
+    return dataset_path / DATASET_NAME / "flickr_logos_27_dataset_images", \
+           dataset_path / DATASET_NAME / "flickr_logos_27_dataset_training_set_annotation.txt"

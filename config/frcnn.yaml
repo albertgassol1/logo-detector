@@ -3,6 +3,7 @@ dataset:
   augmentation: True
   width: 512
   height: 512
+  subset: 6
 
 train:
   epochs: 10

@@ -9,7 +9,10 @@ class DatasetConfig:
     augmentation: bool
     width: int
     height: int
+    subset: int
     annotation_file: Path = Path("")
+    train_file: Path = Path("")
+    validation_file: Path = Path("")
     image_dir: Path = Path("")
 
 @dataclass

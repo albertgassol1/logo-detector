@@ -3,7 +3,7 @@ import argparse
 from copy import deepcopy
 from pathlib import Path
 
-from datasets.fetch_dataset import fetch_dataset
+from datasets.fetch_dataset import fetch_dataset, DATASET_NAME
 from datasets.torchvision_dataset import FlickrVisionDataset
 from models import models_dict
 from utils.configs import Config
@@ -16,29 +16,28 @@ def train(config: Config, dataset_path: Path, download: bool,
     if download:
         config.dataset.image_dir, general_annotation = fetch_dataset(dataset_path)
     else:
-        for file in dataset_path.iterdir():
+        for file in (dataset_path / DATASET_NAME).iterdir():
             if file.is_dir():
                 config.dataset.image_dir = file
             elif file.stem == "flickr_logos_27_dataset_training_set_annotation":
                 general_annotation = file
 
     # Split dataset
-    train_annotation, val_annotation = FlickrVisionDataset.split_dataset(config.dataset.train_percentage, 
-                                                                         general_annotation)
-    # Get classes
-    classes = FlickrVisionDataset.get_classes(general_annotation)
-    
+    config.dataset.train_file, config.dataset.validation_file, classes_map = \
+        FlickrVisionDataset.split_dataset(config.dataset.train_percentage, 
+                                          general_annotation, config.dataset.subset)
     # Create datasets
-    train_dataset = FlickrVisionDataset(config.dataset, classes)
+    train_dataset = FlickrVisionDataset(config.dataset, classes_map)
     val_config = deepcopy(config.dataset)
     val_config.augmentation = False
-    val_dataset = FlickrVisionDataset(val_config, classes, train=False)
+    val_dataset = FlickrVisionDataset(val_config, classes_map, train=False)
     
     # Create output directory
-    Path(args.output_dir).mkdir(exist_ok=True, parents=True)
+    Path(output_dir).mkdir(exist_ok=True, parents=True)
 
     # Create model
-    model = models_dict[config.model.type](config)
+    config.model.num_classes = len(classes_map)
+    model = models_dict[config.model.type](config.model)
     model.to(config.train.device)
     model.train()
 
