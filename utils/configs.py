@@ -1,11 +1,15 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Dict
+
 import torch
 import GPUtil
 
 @dataclass
 class DatasetConfig:
     train_percentage: float
+    batch_size: int
+    num_workers: int
     augmentation: bool
     width: int
     height: int
@@ -17,13 +21,17 @@ class DatasetConfig:
 
 @dataclass
 class TrainConfig:
+    optimizer: str
+    scheduler: str
+    scheduler_params: Dict
     epochs: int
-    batch_size: int
     lr: float
     weight_decay: float
+    momentum: float
     log_freq: int
     save_freq: int
     gpu: str 
+    viz_augmentation: bool
     device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     def __post_init__(self):

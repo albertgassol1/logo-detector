@@ -4,7 +4,7 @@ from typing import Dict, Tuple, List
 import torch
 import cv2
 import numpy as np 
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 
 from utils.configs import DatasetConfig
 from utils.io import load_json, read_txt_file, load_image, save_as_json
@@ -17,6 +17,7 @@ class FlickrVisionDataset(Dataset):
 
         self.config = config
         self.classes_map = classes_map
+        self.train = train
 
         # Get data info
         self.images_info = load_json(config.train_file) if train else load_json(config.validation_file)
@@ -25,7 +26,7 @@ class FlickrVisionDataset(Dataset):
         self.augmentation = train_augmentation() if train else validation_transform()
     
     def __len__(self) -> int:
-        return len(self.image_names_list)
+        return len(self.images_names_list)
     
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
 
@@ -39,7 +40,7 @@ class FlickrVisionDataset(Dataset):
         boxes = torch.as_tensor([[bbox["x1"] * self.config.width / width, 
                                   bbox["y1"] * self.config.height / height, 
                                   bbox["x2"] * self.config.width / width, 
-                                   bbox["y2"] * self.config.height / height] for bbox in image_info["bbox"]], dtype=torch.float32)
+                                  bbox["y2"] * self.config.height / height] for bbox in image_info["bbox"]], dtype=torch.float32)
 
 
         # Prepare target
@@ -47,7 +48,7 @@ class FlickrVisionDataset(Dataset):
         target["boxes"] = boxes
         target["area"] = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
         target["iscrowd"] = torch.zeros((boxes.shape[0],), dtype=torch.int64)
-        target["labels"] = torch.as_tensor([self.classes_map[object_class] for object_class in image_info["class"]], dtype=torch.int64)
+        target["labels"] = torch.as_tensor([self.classes_map.index(object_class) for object_class in image_info["class"]], dtype=torch.int64)
         target["image_id"] = torch.tensor([idx])
 
         # Data augmentation
@@ -57,7 +58,16 @@ class FlickrVisionDataset(Dataset):
             target["boxes"] = torch.as_tensor(augmentation["bboxes"], dtype=torch.float32)
 
         return image, target
-        
+    
+    def get_loader(self) -> DataLoader:
+        return DataLoader(self, batch_size=self.config.batch_size, 
+                          shuffle=self.train, num_workers=self.config.num_workers, 
+                          collate_fn=self.collate_fn)
+    
+    @staticmethod
+    def collate_fn(batch: List[Tuple[torch.Tensor, Dict[str, torch.Tensor]]]) -> Tuple[torch.Tensor, List[Dict[str, torch.Tensor]]]:
+        return tuple(zip(*batch))
+
     @staticmethod
     def split_dataset(train_percentage: float, annotation_file: Path,
                       subset: int = 6) -> Tuple[Path, Path, List[str]]:
@@ -68,6 +78,8 @@ class FlickrVisionDataset(Dataset):
         for image_info in data:
             image_subset = int(image_info[2])
             if image_subset != subset:
+                continue
+            if (int(image_info[3]) >= int(image_info[5])) or (int(image_info[4]) >= int(image_info[6])):
                 continue
             if image_info[0] not in all_data.keys():
                 all_data[image_info[0]] = {"class": [image_info[1]],

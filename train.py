@@ -1,16 +1,21 @@
 import os
 import argparse
-from copy import deepcopy
 from pathlib import Path
+from typing import Optional
+
+import torch
 
 from datasets.fetch_dataset import fetch_dataset, DATASET_NAME
 from datasets.torchvision_dataset import FlickrVisionDataset
 from models import models_dict
+from trainers.torchvision_trainer import VisionTrainer
 from utils.configs import Config
 from utils.config_parser import parse_config
+from utils.visualization import show_tranformed_image, visualize_sample
+
 
 def train(config: Config, dataset_path: Path, download: bool, 
-          resume: str, output_dir: Path) -> None:
+          resume: Optional[Path], output_dir: Path) -> None:
     
     # Fetch dataset
     if download:
@@ -27,19 +32,30 @@ def train(config: Config, dataset_path: Path, download: bool,
         FlickrVisionDataset.split_dataset(config.dataset.train_percentage, 
                                           general_annotation, config.dataset.subset)
     # Create datasets
-    train_dataset = FlickrVisionDataset(config.dataset, classes_map)
-    val_config = deepcopy(config.dataset)
-    val_config.augmentation = False
-    val_dataset = FlickrVisionDataset(val_config, classes_map, train=False)
+    train_loader = FlickrVisionDataset(config.dataset, classes_map).get_loader()
+    val_loader = FlickrVisionDataset(config.dataset, classes_map, train=False).get_loader()
     
     # Create output directory
-    Path(output_dir).mkdir(exist_ok=True, parents=True)
+    output_dir.mkdir(exist_ok=True, parents=True)
 
     # Create model
     config.model.num_classes = len(classes_map)
     model = models_dict[config.model.type](config.model)
+    if resume is not None:
+        if resume.exists():
+            model.load_state_dict(torch.load(resume, map_location=config.train.device))
     model.to(config.train.device)
     model.train()
+
+    # Visualize augmentation
+    if config.train.viz_augmentation:
+        image, target = val_loader.dataset[0]
+        visualize_sample(image, target, classes_map)
+        show_tranformed_image(train_loader)
+
+    # Create trainer
+    trainer = VisionTrainer(model, config.train, train_loader, val_loader)
+    trainer.train(output_dir)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train detection model on Flickr Logos 27 dataset")
@@ -47,13 +63,6 @@ if __name__ == "__main__":
     parser.add_argument("--dataset-path", type=Path, default="data", help="Path to dataset")
     parser.add_argument("--download", action="store_true", help="Download dataset")
     parser.add_argument("--gpu", type=str, default="auto", help="GPU to use")
-    # parser.add_argument("--epochs", type=int, default=10, help="Number of epochs")
-    # parser.add_argument("--batch-size", type=int, default=2, help="Batch size")
-    # parser.add_argument("--lr", type=float, default=0.005, help="Learning rate")
-    # parser.add_argument("--momentum", type=float, default=0.9, help="Momentum")
-    # parser.add_argument("--weight-decay", type=float, default=0.0005, help="Weight decay")
-    # parser.add_argument("--print-freq", type=int, default=10, help="Print frequency")
-    # parser.add_argument("--save-freq", type=int, default=10, help="Save frequency")
     parser.add_argument("--resume", type=str, default=None, help="Path to checkpoint")
     parser.add_argument("--output-dir", type=str, default="checkpoints", help="Path to output directory")
     args = parser.parse_args().__dict__

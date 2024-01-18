@@ -1,17 +1,25 @@
 dataset:
   train_percentage: 0.8
+  batch_size: 5
+  num_workers: 4
   augmentation: True
   width: 512
   height: 512
   subset: 6
 
 train:
+  optimizer: "SGD"
+  scheduler: "StepLR"
+  scheduler_params: 
+    step_size: 3
+    gamma: 1
   epochs: 10
-  batch_size: 2
-  lr: 5e-3
-  weight_decay: 5e-4
+  lr: 0.005
+  weight_decay: 0.0005
+  momentum: 0.9
   log_freq: 10
-  save_freq: 100
+  save_freq: 1
+  viz_augmentation: True
 
 model:
   type: 'torchvision'
