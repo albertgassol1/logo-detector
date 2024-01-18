@@ -1,6 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 import torch
 import GPUtil
@@ -51,7 +51,19 @@ class ModelConfig:
     num_classes: int = 0
 
 @dataclass
+class MetricsConfig:
+    metrics: List = field(default_factory=lambda: [])
+    params: Dict = field(default_factory=lambda: {})
+
+    def __post_init__(self):
+        if "IoU" not in self.params:
+            self.params["IoU"] = {}
+        if "mAP" not in self.params:
+            self.params["mAP"] = {}
+            
+@dataclass
 class Config:
     dataset: DatasetConfig
     train: TrainConfig
     model: ModelConfig
+    metrics: MetricsConfig
