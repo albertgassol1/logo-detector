@@ -9,12 +9,12 @@ dataset:
 
 train:
   optimizer: "SGD"
-  scheduler: "StepLR"
+  scheduler: "None"
   scheduler_params: 
     step_size: 3
     gamma: 1
   epochs: 10
-  lr: 0.005
+  lr: 0.001
   weight_decay: 0.0005
   momentum: 0.9
   log_freq: 10
@@ -25,3 +25,11 @@ model:
   type: 'torchvision'
   name: 'FRCNN'
   freeze: True
+
+metrics:
+  metrics: ["IoU", mAP]
+  params:
+    IoU:
+      class_metrics: True
+    mAP:
+      class_metrics: True

@@ -41,9 +41,6 @@ def train(config: Config, dataset_path: Path, download: bool,
     # Create model
     config.model.num_classes = len(classes_map)
     model = models_dict[config.model.type](config.model)
-    if resume is not None:
-        if resume.exists():
-            model.load_state_dict(torch.load(resume, map_location=config.train.device))
     model.to(config.train.device)
     model.train()
 
@@ -54,7 +51,8 @@ def train(config: Config, dataset_path: Path, download: bool,
         show_tranformed_image(train_loader)
 
     # Create trainer
-    trainer = VisionTrainer(model, config.train, train_loader, val_loader)
+    trainer = VisionTrainer(model, config.train, train_loader, 
+                            val_loader, config.metrics, resume)
     trainer.train(output_dir)
 
 if __name__ == "__main__":
