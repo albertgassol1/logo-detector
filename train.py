@@ -3,8 +3,6 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
-import torch
-
 from datasets.fetch_dataset import fetch_dataset, DATASET_NAME
 from datasets.torchvision_dataset import FlickrVisionDataset
 from models import models_dict
@@ -12,9 +10,9 @@ from trainers.torchvision_trainer import VisionTrainer
 from utils.configs import Config
 from utils.config_parser import parse_config
 from utils.visualization import show_tranformed_image, visualize_sample
+from utils.io import load_np
 
-
-def train(config: Config, dataset_path: Path, download: bool, 
+def train(config: Config, dataset_path: Path, download: bool, compute_splits: bool,
           resume: Optional[Path], output_dir: Path) -> None:
     
     # Fetch dataset
@@ -26,12 +24,24 @@ def train(config: Config, dataset_path: Path, download: bool,
                 config.dataset.image_dir = file
             elif file.stem == "flickr_logos_27_dataset_training_set_annotation":
                 general_annotation = file
+            elif file.stem == "train":
+                config.dataset.train_file = file
+            elif file.stem == "validation":
+                config.dataset.validation_file = file
+            elif file.stem == "classes":
+                classes_map = load_np(file, dtype=str).tolist()
 
-    # Split dataset
-    config.dataset.train_file, config.dataset.validation_file, classes_map = \
-        FlickrVisionDataset.split_dataset(config.dataset.train_percentage, 
-                                          general_annotation, config.dataset.subset)
+    if compute_splits or download:
+        # Split dataset
+        config.dataset.train_file, config.dataset.validation_file, classes_map = \
+            FlickrVisionDataset.split_dataset(config.dataset.image_dir, config.dataset.train_percentage,
+                                              config.dataset.test_percentage,
+                                              general_annotation, config.dataset.subset)
+    
     # Create datasets
+    if config.model.name == "SSD":
+        classes_map.insert(0, "__background__")
+
     train_loader = FlickrVisionDataset(config.dataset, classes_map).get_loader()
     val_loader = FlickrVisionDataset(config.dataset, classes_map, train=False).get_loader()
     
@@ -60,8 +70,9 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=Path, required=True , help="Path to config file")
     parser.add_argument("--dataset-path", type=Path, default="data", help="Path to dataset")
     parser.add_argument("--download", action="store_true", help="Download dataset")
+    parser.add_argument("--compute_splits", action="store_true", help="Download dataset")
     parser.add_argument("--gpu", type=str, default="auto", help="GPU to use")
-    parser.add_argument("--resume", type=str, default=None, help="Path to checkpoint")
+    parser.add_argument("--resume", type=Path, default=None, help="Path to checkpoint")
     parser.add_argument("--output-dir", type=str, default="checkpoints", help="Path to output directory")
     args = parser.parse_args().__dict__
     

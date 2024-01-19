@@ -8,6 +8,8 @@ import GPUtil
 @dataclass
 class DatasetConfig:
     train_percentage: float
+    test_percentage: float
+    val_percentage: float
     batch_size: int
     num_workers: int
     augmentation: bool
@@ -18,6 +20,9 @@ class DatasetConfig:
     train_file: Path = Path("")
     validation_file: Path = Path("")
     image_dir: Path = Path("")
+
+    def __post_init__(self) -> None:
+        assert (self.train_percentage + self.test_percentage + self.val_percentage) == 1.0, "Split percentages must sum 1"
 
 @dataclass
 class TrainConfig:
@@ -32,6 +37,7 @@ class TrainConfig:
     save_freq: int
     gpu: str 
     viz_augmentation: bool
+    nesterov: bool = False
     device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     def __post_init__(self):

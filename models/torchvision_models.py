@@ -37,7 +37,8 @@ class FRCNN(BaseVisionModel):
 
     def __init__(self, config: ModelConfig):
         super().__init__(config)
-        self.model = detection.fasterrcnn_resnet50_fpn(pretrained=True)
+        self.model = detection.fasterrcnn_resnet50_fpn_v2(pretrained=True)
+        # self.model = detection.fasterrcnn_resnet50_fpn(pretrained=True)
 
         # Freeze backbone
         if config.freeze:
@@ -56,10 +57,20 @@ class FRCNN(BaseVisionModel):
 class SSD(BaseVisionModel):
     method = {'name': 'SSD'}
 
-    def __init__(self, config: ModelConfig):
+    def __init__(self, config: ModelConfig, size: int = 300):
         super().__init__(config)
-        weights = detection.SSD300_VGG16_Weights.DEFAULT
-        self.model = detection.ssd300_vgg16(weights=weights, num_classes=config.num_classes)
+        self.model = detection.ssd300_vgg16(weights=detection.SSD300_VGG16_Weights.COCO_V1)
+        in_channels = detection._utils.retrieve_out_channels(self.model.backbone, (size, size))
+        num_anchors = self.model.anchor_generator.num_anchors_per_location()
+        # The classification head.
+        self.model.head.classification_head = detection.ssd.SSDClassificationHead(
+            in_channels=in_channels,
+            num_anchors=num_anchors,
+            num_classes=self.config.num_classes,
+        )
+        # Image size for transforms.
+        self.model.transform.min_size = (size,)
+        self.model.transform.max_size = size
         
         # Freeze backbone
         if config.freeze:

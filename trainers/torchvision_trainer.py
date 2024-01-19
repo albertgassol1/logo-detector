@@ -26,6 +26,7 @@ class VisionTrainer:
         self.optimizer = self.get_optimizer()
         self.scheduler = self.get_scheduler()
         self.metrics = Metrics(metrics_config)
+        self.start_epoch = 0
 
         if resume is not None:
             if not resume.exists():
@@ -44,7 +45,8 @@ class VisionTrainer:
         if self.config.optimizer == "SGD":
             return torch.optim.SGD(params, lr=self.config.lr, 
                                    momentum=self.config.momentum, 
-                                   weight_decay=self.config.weight_decay)
+                                   weight_decay=self.config.weight_decay,
+                                   nesterov=self.config.nesterov)
         elif self.config.optimizer == "Adam":
             return torch.optim.Adam(params, lr=self.config.lr, 
                                     weight_decay=self.config.weight_decay)
@@ -65,9 +67,9 @@ class VisionTrainer:
         self.model.to(self.config.device)
         self.model.train()
         average_losses = {}
-        for epoch in range(self.config.epochs):
+        for epoch in range(self.start_epoch, self.config.epochs):
             pbar = tqdm(self.train_dataloader, total=len(self.train_dataloader))
-            for batch_idx, (images, targets) in enumerate(pbar):
+            for _, (images, targets) in enumerate(pbar):
                 self.optimizer.zero_grad()
                 images = list(image.to(self.config.device) for image in images)
                 targets = [{k: v.to(self.config.device) for k, v in t.items()} for t in targets]
@@ -105,14 +107,17 @@ class VisionTrainer:
 
     def load_checkpoint(self, checkpoint_path: Path) -> None:
         checkpoint = torch.load(checkpoint_path, map_location=self.config.device)
+        self.start_epoch = checkpoint["epoch"] + 1
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         if self.scheduler is not None:
             self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+        print(f"Loaded model at epoch {self.start_epoch}")
 
     def save_checkpoint(self, epoch: int, output_dir: Path) -> None:
         state_dict = {
             "epoch": epoch,
+            "classes": self.train_dataloader.dataset.classes_map,
             "model_state_dict": self.model.state_dict(),
             "optimizer_state_dict": self.optimizer.state_dict(),
             "scheduler_state_dict": self.scheduler.state_dict() if self.scheduler is not None else None

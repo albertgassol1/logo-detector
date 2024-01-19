@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 from typing import Dict, Tuple, List
 
 import torch
@@ -7,7 +8,7 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 
 from utils.configs import DatasetConfig
-from utils.io import load_json, read_txt_file, load_image, save_as_json
+from utils.io import load_json, read_txt_file, load_image, save_as_json, save_np
 from utils.transforms import train_augmentation, validation_transform
 
 
@@ -69,7 +70,8 @@ class FlickrVisionDataset(Dataset):
         return tuple(zip(*batch))
 
     @staticmethod
-    def split_dataset(train_percentage: float, annotation_file: Path,
+    def split_dataset(image_dir: Path, train_percentage: float,
+                      test_percentage: float, annotation_file: Path,
                       subset: int = 6) -> Tuple[Path, Path, List[str]]:
         # Parse annotation file and get train and test subsets
         data = read_txt_file(annotation_file)
@@ -100,23 +102,34 @@ class FlickrVisionDataset(Dataset):
         
         # Generate classes list
         classes = sorted(list(images_per_class.keys()))
+        save_np(np.asarray(classes), annotation_file.parent / "classes")
 
         # Split train and validation
         train_data = dict()
         validation_data = dict()
+        test_data = dict()
         for image_names in images_per_class.values():
             n_train = int(len(image_names) * train_percentage)
+            n_test = int(len(image_names) * test_percentage)
             assert n_train > 0, "Train percentage is too low"
             assert n_train < len(image_names), "Train percentage is too high"
+            assert n_test > 0, "Test percentage is too low"
+            assert n_test < len(image_names), "Test percentage is too high"
             train_names = np.random.choice(image_names, n_train, replace=False)
-            val_names = [image_name for image_name in image_names if image_name not in train_names]
+            non_train = [image_name for image_name in image_names if image_name not in train_names]
+            test_names = np.random.choice(non_train, n_test, replace=False)
+            val_names = [image_name for image_name in image_names if (image_name not in train_names) and (image_name not in test_names)]
             train_data.update({image_name: all_data[image_name] for image_name in train_names})
+            test_data.update({image_name: all_data[image_name] for image_name in test_names})
             validation_data.update({image_name: all_data[image_name] for image_name in val_names})
         
         # Shuffle data
         train_keys = list(train_data.keys())
         np.random.shuffle(train_keys)
         train_data = {key: train_data[key] for key in train_keys}
+        test_keys = list(test_data.keys())
+        np.random.shuffle(test_keys)
+        test_data = {key: test_data[key] for key in test_keys}
         validation_keys = list(validation_data.keys())
         np.random.shuffle(validation_keys)
         validation_data = {key: validation_data[key] for key in validation_keys}
@@ -124,5 +137,16 @@ class FlickrVisionDataset(Dataset):
         # Write files to json
         save_as_json(annotation_file.parent / "train.json", train_data)
         save_as_json(annotation_file.parent / "validation.json", validation_data)
+
+        # Save test data to different folder
+        test_folder = annotation_file.parent / "test"
+        test_folder.mkdir(parents=True, exist_ok=True)
+        save_as_json(test_folder / "test.json", test_data)
+        test_image_folder = test_folder / "images"
+        test_image_folder.mkdir(exist_ok=True)
+        for image in test_image_folder.iterdir():
+            image.unlink()
+        for image_name in test_data:
+            shutil.copy2(image_dir / image_name, test_image_folder / image_name)
 
         return annotation_file.parent / "train.json", annotation_file.parent / "validation.json", classes

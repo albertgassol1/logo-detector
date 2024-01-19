@@ -172,6 +172,7 @@ data/
 
 # Output folder
 checkpoints/
+inference_output/
 
 # wabdb
 wandb/

@@ -1,5 +1,12 @@
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+import numpy as np
+import torch
+
+
+def cv_image_to_tensor(image: np.ndarray) -> torch.Tensor:
+    image_t = image.copy() / 255.0
+    return torch.from_numpy(image_t).permute(2, 0, 1).float()
 
 def train_augmentation():
     return A.Compose([
