@@ -1,6 +1,6 @@
 # logo-detector
 
-This repo implements logo detection using the [Flick-27](http://image.ntua.gr/iva/datasets/flickr_logos/) dataset. The available models are FastRCNN and SSD from [torchvision](http://image.ntua.gr/iva/datasets/flickr_logos/). By default, the pre-trained models are loaded before training.
+This repo implements logo detection using the [Flick-27](http://image.ntua.gr/iva/datasets/flickr_logos/) dataset. The available models are FasterRCNN and SSD from [torchvision](http://image.ntua.gr/iva/datasets/flickr_logos/). By default, the pre-trained models are loaded before training.
 
 
 ## Installation
@@ -38,7 +38,7 @@ The trainer incudes the following additional arguments:
 ```
 
 Examples:
-- FastRCNN:
+- FasterRCNN:
     ```
     python train.py --config config/frcnn.yaml --download
     ```
@@ -57,7 +57,7 @@ The config files are located in the folder ```config```. They contain relevant p
 
 
 ## Inference
-A trained FastRCNN model can be downloaded [here](https://drive.google.com/file/d/1c-N008jM6fUR1zWdoTu5wxYPkKEVNNmc/view?usp=sharing). 
+A trained FasterRCNN model can be downloaded [here](https://drive.google.com/file/d/1c-N008jM6fUR1zWdoTu5wxYPkKEVNNmc/view?usp=sharing). 
 
 This project provides an inferencing script which also has the option to compute metrics (IoU and mAP) if ground truth labels are provided.
 
