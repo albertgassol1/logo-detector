@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Dict, Optional
 
+from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 from torchvision.ops import box_iou
@@ -35,7 +36,8 @@ class VisionTrainer:
         self.wandb = wandb.init(project="flickr-logo-detection",
                                 name=self.model.config.name, 
                                 config=self.config,
-                                resume="allow")
+                                resume="allow",
+                                mode="online")
 
     def get_optimizer(self) -> torch.optim.Optimizer:
         params = [p for p in self.model.parameters() if p.requires_grad]
@@ -64,32 +66,32 @@ class VisionTrainer:
         self.model.train()
         average_losses = {}
         for epoch in range(self.config.epochs):
-            for batch_idx, (images, targets) in enumerate(self.train_dataloader):
+            pbar = tqdm(self.train_dataloader, total=len(self.train_dataloader))
+            for batch_idx, (images, targets) in enumerate(pbar):
+                self.optimizer.zero_grad()
                 images = list(image.to(self.config.device) for image in images)
                 targets = [{k: v.to(self.config.device) for k, v in t.items()} for t in targets]
 
                 loss_dict = self.model(images, targets)
                 losses = sum(loss for loss in loss_dict.values())
 
-                self.optimizer.zero_grad()
                 losses.backward()
                 self.optimizer.step()
 
                 if 'train_loss' not in average_losses:
-                    average_losses['train_loss'] = losses
+                    average_losses['train_loss'] = losses.item()
                 else:
-                    average_losses['train_loss'] += losses
+                    average_losses['train_loss'] += losses.item()
                 
                 for loss_name, loss_value in loss_dict.items():
                     if f"train_{loss_name}" not in average_losses:
-                        average_losses[f"train_{loss_name}"] = loss_value
+                        average_losses[f"train_{loss_name}"] = loss_value.item()
                     else:
-                        average_losses[f"train_{loss_name}"] += loss_value
+                        average_losses[f"train_{loss_name}"] += loss_value.item()
 
-                if batch_idx % self.config.log_freq == 0:
-                    print(f"Epoch: {epoch} - Batch: {batch_idx} - Loss: {losses}")
+                pbar.set_description(desc=f"Loss: {losses.item()}")
             
-            average_losses = {loss_name: loss_value / (len(self.train_dataloader) / self.train_dataloader.batch_size) for loss_name, loss_value in average_losses.items()}
+            average_losses = {loss_name: loss_value / len(self.train_dataloader) for loss_name, loss_value in average_losses.items()}
             print(f"Epoch: {epoch} - Train Loss: {average_losses['train_loss']}")
 
             if epoch % self.config.save_freq == 0:
@@ -117,12 +119,14 @@ class VisionTrainer:
         }
         torch.save(state_dict, output_dir / f"{self.model.config.name}_{epoch}.pth")
 
-    @torch.inference_mode()
+    @torch.no_grad()
     def validation(self, epoch, log_dict: Dict = {}) -> None:
         self.model.train()
         self.metrics.reset()
         average_losses = {}
-        for _, (images, targets) in enumerate(self.validation_dataloader):
+        pbar = tqdm(self.validation_dataloader, total=len(self.validation_dataloader))
+        print(f"Validating at epoch: {epoch}")
+        for _, (images, targets) in enumerate(pbar):
             images = list(image.to(self.config.device) for image in images)
             targets = [{k: v.to(self.config.device) for k, v in t.items()} for t in targets]
 
@@ -133,19 +137,21 @@ class VisionTrainer:
             losses = sum(loss for loss in loss_dict.values())
 
             if 'val_loss' not in average_losses:
-                average_losses['val_loss'] = losses
+                average_losses['val_loss'] = losses.item()
             else:
-                average_losses['val_loss'] += losses
+                average_losses['val_loss'] += losses.item()
             
             for loss_name, loss_value in loss_dict.items():
                 if f"val_{loss_name}" not in average_losses:
-                    average_losses[f"val_{loss_name}"] = loss_value
+                    average_losses[f"val_{loss_name}"] = loss_value.item()
                 else:
-                    average_losses[f"val_{loss_name}"] += loss_value
+                    average_losses[f"val_{loss_name}"] += loss_value.item()
 
             self.metrics.update(predictions, targets)
+
+            pbar.set_description(desc=f"Loss: {losses.item()}")
         
-        average_losses = {loss_name: loss_value / (len(self.validation_dataloader) / self.validation_dataloader.batch_size) for loss_name, loss_value in average_losses.items()}
+        average_losses = {loss_name: loss_value / len(self.validation_dataloader) for loss_name, loss_value in average_losses.items()}
         metrics = self.metrics.compute_and_reset()
 
         print(f"Epoch: {epoch} - Validation Loss: {average_losses['val_loss']}")

@@ -37,8 +37,7 @@ class FRCNN(BaseVisionModel):
 
     def __init__(self, config: ModelConfig):
         super().__init__(config)
-        weights = detection.FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
-        self.model = detection.fasterrcnn_resnet50_fpn_v2(weights=weights, box_score_thresh=0.9)
+        self.model = detection.fasterrcnn_resnet50_fpn(pretrained=True)
 
         # Freeze backbone
         if config.freeze:

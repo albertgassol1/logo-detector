@@ -1,6 +1,6 @@
 dataset:
   train_percentage: 0.8
-  batch_size: 5
+  batch_size: 4
   num_workers: 4
   augmentation: True
   width: 512
@@ -19,12 +19,12 @@ train:
   momentum: 0.9
   log_freq: 10
   save_freq: 1
-  viz_augmentation: True
+  viz_augmentation: False
 
 model:
   type: 'torchvision'
   name: 'FRCNN'
-  freeze: True
+  freeze: False
 
 metrics:
   metrics: ["IoU", mAP]

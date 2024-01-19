@@ -14,11 +14,9 @@ class Metrics:
         self.iou = IntersectionOverUnion(**config.params["IoU"])
         self.map = MeanAveragePrecision(**config.params["mAP"])
         self.average_metrics = {}
-        self.iters = 0
 
     def reset(self) -> None:
         self.average_metrics = {}
-        self.iters = 0
 
     def update(self, predictions: List[Dict[str, torch.Tensor]],
                targets: List[Dict[str, torch.Tensor]]) -> None:
@@ -27,13 +25,12 @@ class Metrics:
             metrics = self._get_metrics(prediction, target)
             for metric, value in metrics.items():
                 if metric not in self.average_metrics:
-                    self.average_metrics[metric] = value
+                    self.average_metrics[metric] = [value]
                 else:
-                    self.average_metrics[metric] += value
-            self.iters += 1
+                    self.average_metrics[metric].append(value)
 
     def compute(self) -> Dict:
-        return {metric: value / self.iters for metric, value in self.average_metrics.items()}
+        return {metric: sum(value) / len(value) for metric, value in self.average_metrics.items()}
     
     def compute_and_reset(self) -> Dict:
         metrics = self.compute()
@@ -65,6 +62,9 @@ class Metrics:
                 "labels": target["labels"].cpu()
             }]
             metrics.update(self.map(preds, targets))
+            metrics.pop("map_per_class")
+            metrics.pop("mar_100_per_class")
+            metrics.pop("classes")
 
-        metrics = {metric: value if not torch.isnan(value) else 0.0 for metric, value in metrics.items()}
+        metrics = {metric: value.item() if not torch.isnan(value).any() else 0.0 for metric, value in metrics.items()}
         return metrics
