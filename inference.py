@@ -11,7 +11,6 @@ from utils.io import load_json, load_image, save_image, save_as_json
 from utils.transforms import cv_image_to_tensor
 from utils.visualization import get_prediction, visualize_sample
 from utils.metrics import Metrics
-from utils.tta import predict_with_tta
 
 
 @torch.inference_mode()
@@ -39,10 +38,8 @@ def inference(test_folder: Path, output_path: Path, config: Config,
         image = load_image(image_path)
         image_t = cv_image_to_tensor(image).to(config.train.device)
 
-        if tta:
-            predict_with_tta(model, image)
-        else:
-            prediction = model(image_t.unsqueeze(0))[0]
+        # TODO: Implement TTA. Call it here.
+        prediction = model(image_t.unsqueeze(0))[0]
         
         image_prediction = get_prediction(image, prediction, classes, detection_th)
         save_image(image_prediction, output_path / f"{image_path.stem}_pred{image_path.suffix}")
@@ -69,7 +66,6 @@ if __name__ == "__main__":
     parser.add_argument("--test_folder", type=Path, required=True , help="Path to folder where test images are")
     parser.add_argument("--output_path", type=str, default="inference_output", help="Path to output directory")
     parser.add_argument("--eval_metrics", action="store_true", help="Eval metrics using GT")
-    parser.add_argument("--tta", action="store_true", help="Use test time augmentation")
     parser.add_argument("--detection_th", type=float, default=0.7, help="Detection threshold")
     parser.add_argument("--gpu", type=str, default="auto", help="GPU to use")
     args = parser.parse_args().__dict__

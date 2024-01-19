@@ -5,6 +5,7 @@ from typing import Dict, List
 import torch
 import GPUtil
 
+
 @dataclass
 class DatasetConfig:
     train_percentage: float
@@ -24,6 +25,7 @@ class DatasetConfig:
     def __post_init__(self) -> None:
         assert (self.train_percentage + self.test_percentage + self.val_percentage) == 1.0, "Split percentages must sum 1"
 
+
 @dataclass
 class TrainConfig:
     optimizer: str
@@ -40,7 +42,7 @@ class TrainConfig:
     nesterov: bool = False
     device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.gpu == "auto":
             device_ids = GPUtil.getAvailable(order='memory', limit=1, maxLoad=0.5, maxMemory=0.5, 
                                              includeNan=False, excludeID=[], excludeUUID=[])
@@ -48,7 +50,8 @@ class TrainConfig:
                 self.device = torch.device(f"cuda:{device_ids[0]}")
                 return
         self.device = torch.device("cpu")
-       
+
+
 @dataclass
 class ModelConfig:
     type: str
@@ -56,16 +59,18 @@ class ModelConfig:
     freeze: bool
     num_classes: int = 0
 
+
 @dataclass
 class MetricsConfig:
     metrics: List = field(default_factory=lambda: [])
     params: Dict = field(default_factory=lambda: {})
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if "IoU" not in self.params:
             self.params["IoU"] = {}
         if "mAP" not in self.params:
             self.params["mAP"] = {}
+    
             
 @dataclass
 class Config:

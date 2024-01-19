@@ -42,3 +42,4 @@ def save_np(array: np.ndarray, filepath: Path, format: str = ".txt") -> None:
             np.savetxt(str(filepath) + format, array)
     else:
         np.save(filepath, array)
+        
