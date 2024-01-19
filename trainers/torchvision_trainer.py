@@ -63,7 +63,7 @@ class VisionTrainer:
             return None
 
     def train(self, output_path: Path) -> None:
-        (output_path / "checkpoints").mkdir(exist_ok=True, parents=True)
+        output_path.mkdir(exist_ok=True, parents=True)
         self.model.to(self.config.device)
         self.model.train()
         average_losses = {}
@@ -97,7 +97,7 @@ class VisionTrainer:
             print(f"Epoch: {epoch} - Train Loss: {average_losses['train_loss']}")
 
             if epoch % self.config.save_freq == 0:
-                self.save_checkpoint(epoch, output_path / "checkpoints")
+                self.save_checkpoint(epoch, output_path)
 
             if self.scheduler is not None:
                 self.scheduler.step()
