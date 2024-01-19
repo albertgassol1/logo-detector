@@ -125,7 +125,7 @@ class VisionTrainer:
         torch.save(state_dict, output_dir / f"{self.model.config.name}_{epoch}.pth")
 
     @torch.no_grad()
-    def validation(self, epoch, log_dict: Dict = {}) -> None:
+    def validation(self, epoch: int, log_dict: Dict = {}) -> None:
         self.model.train()
         self.metrics.reset()
         average_losses = {}

@@ -76,10 +76,10 @@ The script provides the following optional arguments:
 ```
 
 If the evaluation is enabled, the ground truth images with the bounding boxes are also stored in the output directory. Additionally, the metrics are stores in a json file in the output directory.
- 
+
 Example using the provided trained model (store it in folder ```./checkpoints```):
 ```
-python inference.py --config config/frcnn.py --model_checkpoint checkpoints/FRCNN_v1_latest.pth --test_folder data/flickr_logos_27_dataset/test --eval_metrics
+python inference.py --config config/frcnn.yaml --model_checkpoint checkpoints/FRCNN_v1_latest.pth --test_folder data/flickr_logos_27_dataset/test --eval_metrics
 ```
 
 Reminder: if you have not used the trainer first and you want to test the model on the dataset, run the trainer once to download and parse the dataset with the flag ```--download```. After the dataset is downloaded and parsed, you can stop the training.
